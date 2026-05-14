@@ -1,211 +1,101 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Go · gRPC · Hexagonal — Cheat Sheet</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;700;800&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
   :root {
-    --bg:       #0d0f14;
-    --surface:  #13161e;
-    --surface2: #1a1e2a;
-    --border:   #252a38;
-    --go:       #00ADD8;
-    --grpc:     #7C4DFF;
-    --hex:      #00E5A0;
-    --amber:    #FFB830;
-    --text:     #E8EAF0;
-    --muted:    #6B7280;
-    --code-bg:  #0a0c11;
-    --radius:   10px;
+    --bg:#0d0f14;--surface:#13161e;--surface2:#1a1e2a;--border:#252a38;
+    --go:#00ADD8;--grpc:#7C4DFF;--hex:#00E5A0;--amber:#FFB830;
+    --text:#E8EAF0;--muted:#6B7280;--code-bg:#0a0c11;--radius:10px;
   }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Sarabun',sans-serif;min-height:100vh;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.4}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Syne', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+  header{position:relative;z-index:1;padding:48px 40px 32px;border-bottom:1px solid var(--border);display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap}
+  header h1{font-family:'Syne',sans-serif;font-size:clamp(28px,4vw,48px);font-weight:800;letter-spacing:-1px;line-height:1}
+  header h1 .go{color:var(--go)} header h1 .grpc{color:var(--grpc)} header h1 .hex{color:var(--hex)}
+  .header-tags{display:flex;gap:8px;flex-wrap:wrap}
+  .tag{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;text-transform:uppercase}
+  .tag-go{background:#00ADD820;color:var(--go);border:1px solid #00ADD840}
+  .tag-grpc{background:#7C4DFF20;color:var(--grpc);border:1px solid #7C4DFF40}
+  .tag-hex{background:#00E5A020;color:var(--hex);border:1px solid #00E5A040}
 
-  /* ── NOISE OVERLAY ── */
-  body::before {
-    content: '';
-    position: fixed; inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-    pointer-events: none; z-index: 0; opacity: .4;
-  }
+  .freq-legend{position:relative;z-index:1;display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:10px 40px;background:var(--surface);border-bottom:1px solid var(--border);font-family:'Sarabun',sans-serif;font-size:12.5px;color:var(--muted)}
+  .freq-legend strong{color:var(--text)}
+  .fl-item{display:flex;align-items:center;gap:6px}
+  .fdot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+  .fdot.a{background:#00E5A0;box-shadow:0 0 6px #00E5A0}
+  .fdot.o{background:#FFB830;box-shadow:0 0 6px #FFB830}
+  .fdot.r{background:#F87171;box-shadow:0 0 6px #F87171}
 
-  /* ── HEADER ── */
-  header {
-    position: relative; z-index: 1;
-    padding: 48px 40px 32px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap;
-  }
-  header h1 {
-    font-size: clamp(28px, 4vw, 48px);
-    font-weight: 800; letter-spacing: -1px; line-height: 1;
-  }
-  header h1 span.go   { color: var(--go); }
-  header h1 span.grpc { color: var(--grpc); }
-  header h1 span.hex  { color: var(--hex); }
-  .header-tags { display: flex; gap: 8px; flex-wrap: wrap; }
-  .tag {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; font-weight: 600; letter-spacing: .5px;
-    padding: 3px 10px; border-radius: 99px; text-transform: uppercase;
-  }
-  .tag-go   { background: #00ADD820; color: var(--go);   border: 1px solid #00ADD840; }
-  .tag-grpc { background: #7C4DFF20; color: var(--grpc); border: 1px solid #7C4DFF40; }
-  .tag-hex  { background: #00E5A020; color: var(--hex);  border: 1px solid #00E5A040; }
+  nav{position:sticky;top:0;z-index:10;background:#0d0f14ee;backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;gap:4px;padding:10px 40px;overflow-x:auto}
+  nav::-webkit-scrollbar{height:0}
+  nav a{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;text-decoration:none;padding:5px 14px;border-radius:6px;white-space:nowrap;transition:all .18s}
+  nav a.go-link{color:#00ADD888} nav a.grpc-link{color:#7C4DFF88} nav a.hex-link{color:#00E5A088}
+  nav a:hover,nav a.active{background:var(--surface2)}
+  nav a.active.go-link{color:var(--go)} nav a.active.grpc-link{color:var(--grpc)} nav a.active.hex-link{color:var(--hex)}
 
-  /* ── NAV PILLS ── */
-  nav {
-    position: sticky; top: 0; z-index: 10;
-    background: #0d0f14ee;
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    display: flex; gap: 4px; padding: 10px 40px; overflow-x: auto;
-  }
-  nav a {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px; font-weight: 600; text-decoration: none;
-    padding: 5px 14px; border-radius: 6px; white-space: nowrap;
-    color: var(--muted); transition: all .18s;
-  }
-  nav a:hover, nav a.active { color: var(--text); background: var(--surface2); }
-  nav a.go-link   { color: var(--go); }
-  nav a.grpc-link { color: var(--grpc); }
-  nav a.hex-link  { color: var(--hex); }
+  main{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:40px 40px 80px}
+  section{margin-bottom:64px}
+  .sh{display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+  .sdot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .sdot.go{background:var(--go);box-shadow:0 0 8px var(--go)}
+  .sdot.grpc{background:var(--grpc);box-shadow:0 0 8px var(--grpc)}
+  .sdot.hex{background:var(--hex);box-shadow:0 0 8px var(--hex)}
+  .stitle{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;letter-spacing:-.3px}
+  .ssub{font-size:13px;color:var(--muted);margin-left:auto;font-family:'JetBrains Mono',monospace}
 
-  /* ── MAIN LAYOUT ── */
-  main {
-    position: relative; z-index: 1;
-    max-width: 1200px; margin: 0 auto;
-    padding: 40px 40px 80px;
-  }
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
+  .g3{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
 
-  /* ── SECTION ── */
-  section { margin-bottom: 60px; }
-  .section-header {
-    display: flex; align-items: center; gap: 12px;
-    margin-bottom: 24px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--border);
-  }
-  .section-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .section-dot.go   { background: var(--go); box-shadow: 0 0 8px var(--go); }
-  .section-dot.grpc { background: var(--grpc); box-shadow: 0 0 8px var(--grpc); }
-  .section-dot.hex  { background: var(--hex); box-shadow: 0 0 8px var(--hex); }
-  .section-title { font-size: 20px; font-weight: 800; letter-spacing: -.3px; }
-  .section-sub { font-size: 13px; color: var(--muted); margin-left: auto;
-    font-family: 'JetBrains Mono', monospace; }
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color .18s,transform .18s;display:flex;flex-direction:column}
+  .card:hover{transform:translateY(-2px)}
+  .card.go:hover{border-color:#00ADD840} .card.grpc:hover{border-color:#7C4DFF40} .card.hex:hover{border-color:#00E5A040}
 
-  /* ── GRID ── */
-  .grid { display: grid; gap: 16px; }
-  .grid-2 { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
-  .grid-3 { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .ch{padding:10px 14px 8px;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .ci{font-size:14px}
+  .cl{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;flex:1}
+  .cl.go{color:var(--go)} .cl.grpc{color:var(--grpc)} .cl.hex{color:var(--hex)} .cl.amber{color:var(--amber)}
 
-  /* ── CARD ── */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    transition: border-color .18s, transform .18s;
-  }
-  .card:hover { transform: translateY(-2px); }
-  .card.go:hover   { border-color: #00ADD840; }
-  .card.grpc:hover { border-color: #7C4DFF40; }
-  .card.hex:hover  { border-color: #00E5A040; }
+  .freq{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase;margin-left:auto}
+  .freq.a{background:#00E5A015;color:#00E5A0;border:1px solid #00E5A035}
+  .freq.o{background:#FFB83015;color:#FFB830;border:1px solid #FFB83035}
+  .freq.r{background:#F8717115;color:#F87171;border:1px solid #F8717135}
 
-  .card-head {
-    padding: 12px 16px 10px;
-    display: flex; align-items: center; gap: 8px;
-    border-bottom: 1px solid var(--border);
-  }
-  .card-icon { font-size: 14px; }
-  .card-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
-  }
-  .card-label.go   { color: var(--go); }
-  .card-label.grpc { color: var(--grpc); }
-  .card-label.hex  { color: var(--hex); }
-  .card-label.amber{ color: var(--amber); }
+  .td{padding:8px 14px 10px;font-family:'Sarabun',sans-serif;font-size:13px;line-height:1.65;color:#8B92A8;border-bottom:1px solid #181c27;background:#10131a}
+  .td strong{color:#B8C0D4;font-weight:600}
+  .ic{font-family:'JetBrains Mono',monospace;font-size:11px;background:#1e2230;padding:1px 5px;border-radius:3px;color:#9AA5C0}
 
-  /* ── CODE BLOCK ── */
-  pre {
-    background: var(--code-bg);
-    padding: 16px;
-    overflow-x: auto;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12.5px; line-height: 1.7;
-    tab-size: 2;
-  }
-  code { font-family: inherit; }
+  pre{background:var(--code-bg);padding:14px 16px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;tab-size:2;flex:1}
+  code{font-family:inherit}
+  .kw{color:#7C4DFF} .fn{color:#00ADD8} .str{color:#00E5A0} .cm{color:#4B5563;font-style:italic} .tp{color:#FFB830} .nu{color:#F87171}
 
-  /* syntax colors */
-  .kw  { color: #7C4DFF; }   /* keyword */
-  .fn  { color: #00ADD8; }   /* function */
-  .str { color: #00E5A0; }   /* string */
-  .cm  { color: #4B5563; }   /* comment */
-  .tp  { color: #FFB830; }   /* type */
-  .nu  { color: #F87171; }   /* number */
-  .op  { color: #94A3B8; }   /* operator */
+  .prose{padding:14px 16px;font-size:13px;line-height:1.7;color:#C4C9D8}
+  .prose strong{color:var(--text);font-weight:700}
+  .prose ul{padding-left:18px} .prose li{margin-bottom:4px}
+  .hl{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--surface2);padding:1px 6px;border-radius:4px}
 
-  /* ── PROSE CARD ── */
-  .prose { padding: 16px; font-size: 13.5px; line-height: 1.7; color: #C4C9D8; }
-  .prose strong { color: var(--text); font-weight: 700; }
-  .prose ul { padding-left: 18px; }
-  .prose li { margin-bottom: 4px; }
-  .prose .hl { 
-    font-family: 'JetBrains Mono', monospace; font-size: 12px;
-    background: var(--surface2); padding: 1px 6px; border-radius: 4px;
-  }
+  .tw{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:9px 14px;text-align:left;background:var(--surface2);color:var(--muted);border-bottom:1px solid var(--border)}
+  td{padding:9px 14px;border-bottom:1px solid #1a1e2a;line-height:1.5;font-family:'Sarabun',sans-serif;font-size:13px}
+  tr:last-child td{border-bottom:none} tr:hover td{background:var(--surface2)}
+  .mono{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--go)}
 
-  /* ── TABLE ── */
-  .tbl-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th {
-    font-family: 'JetBrains Mono', monospace; font-size: 11px;
-    font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
-    padding: 10px 14px; text-align: left;
-    background: var(--surface2); color: var(--muted);
-    border-bottom: 1px solid var(--border);
-  }
-  td { padding: 10px 14px; border-bottom: 1px solid #1a1e2a; line-height: 1.5; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--surface2); }
-  .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--go); }
+  .badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px}
+  .bg{background:#00E5A015;color:var(--hex);border:1px solid #00E5A030}
+  .bb{background:#00ADD815;color:var(--go);border:1px solid #00ADD830}
+  .br{background:#F8717115;color:#F87171;border:1px solid #F8717130}
 
-  /* ── BADGE ── */
-  .badge {
-    display: inline-block; font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
-  }
-  .badge-green { background: #00E5A015; color: var(--hex); border: 1px solid #00E5A030; }
-  .badge-blue  { background: #00ADD815; color: var(--go);  border: 1px solid #00ADD830; }
-  .badge-red   { background: #F8717115; color: #F87171;    border: 1px solid #F8717130; }
+  .div{display:flex;align-items:center;gap:12px;margin:24px 0 16px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .div::before,.div::after{content:'';flex:1;height:1px;background:var(--border)}
 
-  /* ── DIVIDER LABEL ── */
-  .divider {
-    display: flex; align-items: center; gap: 12px;
-    margin: 24px 0 16px; color: var(--muted);
-    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
-    text-transform: uppercase; letter-spacing: .5px;
-  }
-  .divider::before, .divider::after {
-    content: ''; flex: 1; height: 1px; background: var(--border);
-  }
-
-  /* ── SCROLLBAR ── */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar{width:6px;height:6px} ::-webkit-scrollbar-track{background:var(--bg)} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 </style>
 </head>
 <body>
@@ -213,16 +103,21 @@
 <header>
   <div>
     <h1><span class="go">Go</span> · <span class="grpc">gRPC</span> · <span class="hex">Hexagonal</span></h1>
-    <p style="color:var(--muted);font-size:13px;margin-top:6px;font-family:'JetBrains Mono',monospace">
-      cheat sheet — backend microservices
-    </p>
+    <p style="color:var(--muted);font-size:13px;margin-top:6px;font-family:'JetBrains Mono',monospace">cheat sheet — backend microservices</p>
   </div>
   <div class="header-tags">
     <span class="tag tag-go">Go 1.22+</span>
     <span class="tag tag-grpc">gRPC / proto3</span>
-    <span class="tag tag-hex">Ports & Adapters</span>
+    <span class="tag tag-hex">Ports &amp; Adapters</span>
   </div>
 </header>
+
+<div class="freq-legend">
+  <strong>ความถี่ในการใช้งาน:</strong>
+  <span class="fl-item"><span class="fdot a"></span>ใช้ทุกวัน / เจอแน่ๆ</span>
+  <span class="fl-item"><span class="fdot o"></span>ใช้บ้าง / ขึ้นกับงาน</span>
+  <span class="fl-item"><span class="fdot r"></span>ใช้น้อย / กรณีพิเศษ</span>
+</div>
 
 <nav id="nav">
   <a href="#go" class="go-link">Go Basics</a>
@@ -233,97 +128,80 @@
   <a href="#grpc-client" class="grpc-link">gRPC Client</a>
   <a href="#hex" class="hex-link">Hexagonal</a>
   <a href="#hex-code" class="hex-link">Hex Code</a>
-  <a href="#combined" class="hex-link">Combined</a>
+  <a href="#combined" class="hex-link">Wire Up</a>
 </nav>
 
 <main>
 
-  <!-- ══════════════════════════════════════════
-       SECTION: GO BASICS
-  ══════════════════════════════════════════ -->
-  <section id="go">
-    <div class="section-header">
-      <div class="section-dot go"></div>
-      <span class="section-title">Go Basics</span>
-      <span class="section-sub">syntax essentials</span>
-    </div>
+<!-- ═══════════════ GO BASICS ═══════════════ -->
+<section id="go">
+  <div class="sh"><div class="sdot go"></div><span class="stitle">Go Basics</span><span class="ssub">syntax essentials</span></div>
+  <div class="grid g2">
 
-    <div class="grid grid-2">
-
-      <!-- Structs & Methods -->
-      <div class="card go">
-        <div class="card-head">
-          <span class="card-icon">🏗</span>
-          <span class="card-label go">Struct & Method</span>
-        </div>
-        <pre><code><span class="kw">type</span> <span class="tp">User</span> <span class="kw">struct</span> {
+    <div class="card go">
+      <div class="ch"><span class="ci">🏗</span><span class="cl go">Struct &amp; Method</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td"><strong>Struct</strong> คือการนิยาม data type เหมือน class<br/><strong>Value receiver</strong> <span class="ic">(u User)</span> — อ่านอย่างเดียว ไม่แก้ struct ต้นฉบับ<br/><strong>Pointer receiver</strong> <span class="ic">(u *User)</span> — แก้ไข struct ได้ ใช้บ่อยกว่ามาก</div>
+      <pre><code><span class="kw">type</span> <span class="tp">User</span> <span class="kw">struct</span> {
   ID    <span class="tp">string</span>
   Email <span class="tp">string</span>
   Age   <span class="tp">int</span>
 }
 
-<span class="cm">// value receiver (ไม่แก้ไข struct)</span>
+<span class="cm">// value receiver — copy ค่ามา อ่านได้อย่างเดียว</span>
 <span class="kw">func</span> (u <span class="tp">User</span>) <span class="fn">Greet</span>() <span class="tp">string</span> {
   <span class="kw">return</span> <span class="str">"Hello, "</span> + u.Email
 }
 
-<span class="cm">// pointer receiver (แก้ไข struct ได้)</span>
+<span class="cm">// pointer receiver — แก้ไข struct ต้นฉบับได้</span>
 <span class="kw">func</span> (u *<span class="tp">User</span>) <span class="fn">SetEmail</span>(e <span class="tp">string</span>) {
   u.Email = e
 }</code></pre>
-      </div>
+    </div>
 
-      <!-- Interface -->
-      <div class="card go">
-        <div class="card-head">
-          <span class="card-icon">🔌</span>
-          <span class="card-label go">Interface</span>
-        </div>
-        <pre><code><span class="kw">type</span> <span class="tp">UserRepo</span> <span class="kw">interface</span> {
+    <div class="card go">
+      <div class="ch"><span class="ci">🔌</span><span class="cl go">Interface</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td"><strong>หัวใจของ Go</strong> — ไม่ต้อง declare ว่า implement แค่มี method ครบก็เป็น interface นั้นทันที (duck typing)<br/>ใช้คู่กับ Hexagonal เพื่อนิยาม Port ทุกตัว</div>
+      <pre><code><span class="kw">type</span> <span class="tp">UserRepo</span> <span class="kw">interface</span> {
   <span class="fn">FindByID</span>(id <span class="tp">string</span>) (*<span class="tp">User</span>, <span class="tp">error</span>)
   <span class="fn">Save</span>(u *<span class="tp">User</span>) <span class="tp">error</span>
 }
 
-<span class="cm">// implement โดยไม่ต้อง declare</span>
+<span class="cm">// implement โดยไม่ต้องเขียน "implements UserRepo"</span>
 <span class="kw">type</span> <span class="tp">postgresRepo</span> <span class="kw">struct</span>{ db *<span class="tp">sql.DB</span> }
 
 <span class="kw">func</span> (r *<span class="tp">postgresRepo</span>) <span class="fn">FindByID</span>(id <span class="tp">string</span>) (*<span class="tp">User</span>, <span class="tp">error</span>) {
-  <span class="cm">// ...</span>
+  <span class="cm">// query postgres...</span>
 }
 <span class="kw">func</span> (r *<span class="tp">postgresRepo</span>) <span class="fn">Save</span>(u *<span class="tp">User</span>) <span class="tp">error</span> {
-  <span class="cm">// ...</span>
+  <span class="cm">// insert...</span>
 }</code></pre>
-      </div>
+    </div>
 
-      <!-- Slices & Maps -->
-      <div class="card go">
-        <div class="card-head">
-          <span class="card-icon">📦</span>
-          <span class="card-label go">Slice & Map</span>
-        </div>
-        <pre><code><span class="cm">// slice</span>
+    <div class="card go">
+      <div class="ch"><span class="ci">📦</span><span class="cl go">Slice &amp; Map</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td"><strong>slice</strong> = dynamic array, <strong>map</strong> = hash map<br/><strong>comma-ok pattern</strong> <span class="ic">val, ok := m[key]</span> — เช็คก่อนใช้ ไม่งั้น map จะ return zero value แทน panic<br/>range ใช้ loop ทั้ง slice และ map</div>
+      <pre><code><span class="cm">// slice</span>
 ids := []<span class="tp">string</span>{<span class="str">"a"</span>, <span class="str">"b"</span>}
 ids = <span class="fn">append</span>(ids, <span class="str">"c"</span>)
-<span class="kw">for</span> i, v := <span class="kw">range</span> ids { _ = i; _ = v }
+<span class="kw">for</span> i, v := <span class="kw">range</span> ids { <span class="cm">/* i=index, v=value */</span> }
 
 <span class="cm">// map</span>
 cache := <span class="kw">map</span>[<span class="tp">string</span>]*<span class="tp">User</span>{}
 cache[<span class="str">"u1"</span>] = &<span class="tp">User</span>{ID: <span class="str">"u1"</span>}
 
-val, ok := cache[<span class="str">"u1"</span>]  <span class="cm">// comma-ok pattern</span>
+<span class="cm">// comma-ok: ตรวจว่า key มีอยู่จริงไหม</span>
+val, ok := cache[<span class="str">"u1"</span>]
 <span class="kw">if</span> !ok {
-  <span class="cm">// key ไม่มี</span>
-}</code></pre>
-      </div>
+  <span class="cm">// ไม่พบ key นี้</span>
+}
+_ = val</code></pre>
+    </div>
 
-      <!-- Init & Constructor -->
-      <div class="card go">
-        <div class="card-head">
-          <span class="card-icon">🏭</span>
-          <span class="card-label go">Constructor Pattern</span>
-        </div>
-        <pre><code><span class="kw">type</span> <span class="tp">Service</span> <span class="kw">struct</span> {
-  repo   <span class="tp">UserRepo</span>
+    <div class="card go">
+      <div class="ch"><span class="ci">🏭</span><span class="cl go">Constructor Pattern</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">Go ไม่มี constructor — ใช้ function <span class="ic">New...()</span> แทน<br/>รับ dependencies เข้ามาเป็น interface (manual DI) — เป็น pattern หลักของ Hexagonal<br/>เก็บ dependencies เป็น unexported field</div>
+      <pre><code><span class="kw">type</span> <span class="tp">Service</span> <span class="kw">struct</span> {
+  repo   <span class="tp">UserRepo</span>     <span class="cm">// interface ไม่ใช่ concrete type</span>
   logger *<span class="tp">slog.Logger</span>
 }
 
@@ -331,49 +209,53 @@ val, ok := cache[<span class="str">"u1"</span>]  <span class="cm">// comma-ok pa
   repo   <span class="tp">UserRepo</span>,
   logger *<span class="tp">slog.Logger</span>,
 ) *<span class="tp">Service</span> {
-  <span class="kw">return</span> &<span class="tp">Service</span>{
-    repo:   repo,
-    logger: logger,
-  }
+  <span class="kw">return</span> &<span class="tp">Service</span>{repo: repo, logger: logger}
 }</code></pre>
-      </div>
-
     </div>
 
-    <div class="divider">common patterns</div>
+    <div class="card go">
+      <div class="ch"><span class="ci">📋</span><span class="cl go">Defer &amp; Cleanup</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td"><strong>defer</strong> รันโค้ดตอน function return เสมอ ไม่ว่าจะ return ปกติหรือ error<br/>ป้องกัน resource leak — ปิด file, unlock mutex, rollback transaction<br/>stack-based: defer ตัวหลังสุดรันก่อน</div>
+      <pre><code><span class="kw">func</span> <span class="fn">doWork</span>(path <span class="tp">string</span>) <span class="tp">error</span> {
+  f, err := os.<span class="fn">Open</span>(path)
+  <span class="kw">if</span> err != <span class="kw">nil</span> { <span class="kw">return</span> err }
+  <span class="kw">defer</span> f.<span class="fn">Close</span>() <span class="cm">// รันตอน return เสมอ</span>
 
-    <div class="grid grid-3">
-      <div class="card go">
-        <div class="card-head">
-          <span class="card-icon">🧩</span>
-          <span class="card-label go">Type Embedding</span>
-        </div>
-        <pre><code><span class="kw">type</span> <span class="tp">Base</span> <span class="kw">struct</span> {
+  mu.<span class="fn">Lock</span>()
+  <span class="kw">defer</span> mu.<span class="fn">Unlock</span>() <span class="cm">// ไม่มีทางลืม unlock</span>
+
+  tx, _ := db.<span class="fn">Begin</span>()
+  <span class="kw">defer</span> tx.<span class="fn">Rollback</span>() <span class="cm">// safe fallback ก่อน commit</span>
+  <span class="cm">// ... do work ...</span>
+  <span class="kw">return</span> tx.<span class="fn">Commit</span>()
+}</code></pre>
+    </div>
+
+    <div class="card go">
+      <div class="ch"><span class="ci">🧩</span><span class="cl go">Type Embedding</span><span class="freq o">ใช้บ้าง</span></div>
+      <div class="td">Embed struct เพื่อ "inherit" fields และ methods โดยไม่ต้องเขียนซ้ำ<br/>ใช้บ่อยตอนทำ <strong>base entity</strong> (ID, CreatedAt) หรือ embed <span class="ic">UnimplementedXxxServer</span> ของ gRPC</div>
+      <pre><code><span class="kw">type</span> <span class="tp">Base</span> <span class="kw">struct</span> {
   ID        <span class="tp">string</span>
   CreatedAt <span class="tp">time.Time</span>
 }
 
 <span class="kw">type</span> <span class="tp">Post</span> <span class="kw">struct</span> {
-  <span class="tp">Base</span>        <span class="cm">// embed</span>
+  <span class="tp">Base</span>            <span class="cm">// embed — ได้ ID, CreatedAt ฟรี</span>
   Title   <span class="tp">string</span>
   Content <span class="tp">string</span>
 }
 
 p := <span class="tp">Post</span>{}
-p.ID = <span class="str">"p1"</span>  <span class="cm">// access Base fields</span></code></pre>
-      </div>
+p.ID = <span class="str">"p1"</span>      <span class="cm">// access Base field ได้เลย</span></code></pre>
+    </div>
 
-      <div class="card go">
-        <div class="card-head">
-          <span class="card-icon">⚙️</span>
-          <span class="card-label go">Functional Options</span>
-        </div>
-        <pre><code><span class="kw">type</span> <span class="tp">Option</span> <span class="kw">func</span>(*<span class="tp">Config</span>)
+    <div class="card go">
+      <div class="ch"><span class="ci">⚙️</span><span class="cl go">Functional Options</span><span class="freq o">ใช้บ้าง</span></div>
+      <div class="td">Pattern สำหรับ config ที่มี optional parameter หลายตัว<br/>เจอบ่อยใน library ดีๆ เช่น <span class="ic">grpc.NewServer(opt1, opt2)</span> — ตัวเองเขียนไม่บ่อยนักแต่ต้องอ่านออก</div>
+      <pre><code><span class="kw">type</span> <span class="tp">Option</span> <span class="kw">func</span>(*<span class="tp">Config</span>)
 
 <span class="kw">func</span> <span class="fn">WithTimeout</span>(d <span class="tp">time.Duration</span>) <span class="tp">Option</span> {
-  <span class="kw">return func</span>(c *<span class="tp">Config</span>) {
-    c.Timeout = d
-  }
+  <span class="kw">return func</span>(c *<span class="tp">Config</span>) { c.Timeout = d }
 }
 
 <span class="kw">func</span> <span class="fn">New</span>(opts ...<span class="tp">Option</span>) *<span class="tp">Client</span> {
@@ -381,56 +263,28 @@ p.ID = <span class="str">"p1"</span>  <span class="cm">// access Base fields</sp
   <span class="kw">for</span> _, o := <span class="kw">range</span> opts { o(cfg) }
   <span class="kw">return</span> &<span class="tp">Client</span>{cfg: cfg}
 }</code></pre>
-      </div>
-
-      <div class="card go">
-        <div class="card-head">
-          <span class="card-icon">📋</span>
-          <span class="card-label go">Defer & Cleanup</span>
-        </div>
-        <pre><code><span class="kw">func</span> <span class="fn">ReadFile</span>(path <span class="tp">string</span>) {
-  f, err := os.<span class="fn">Open</span>(path)
-  <span class="kw">if</span> err != <span class="kw">nil</span> { <span class="kw">return</span> }
-  <span class="kw">defer</span> f.<span class="fn">Close</span>() <span class="cm">// ทำงานตอน func return</span>
-
-  mu.Lock()
-  <span class="kw">defer</span> mu.<span class="fn">Unlock</span>()
-
-  tx, _ := db.<span class="fn">Begin</span>()
-  <span class="kw">defer</span> tx.<span class="fn">Rollback</span>() <span class="cm">// safe fallback</span>
-}</code></pre>
-      </div>
-    </div>
-  </section>
-
-  <!-- ══════════════════════════════════════════
-       SECTION: CONCURRENCY
-  ══════════════════════════════════════════ -->
-  <section id="go-concurrency">
-    <div class="section-header">
-      <div class="section-dot go"></div>
-      <span class="section-title">Concurrency</span>
-      <span class="section-sub">goroutine · channel · sync</span>
     </div>
 
-    <div class="grid grid-2">
-      <div class="card go">
-        <div class="card-head">
-          <span class="card-icon">🚀</span>
-          <span class="card-label go">Goroutine & Channel</span>
-        </div>
-        <pre><code><span class="kw">func</span> <span class="fn">main</span>() {
-  ch := <span class="fn">make</span>(<span class="kw">chan</span> <span class="tp">int</span>, <span class="nu">1</span>) <span class="cm">// buffered</span>
+  </div>
+</section>
 
-  <span class="kw">go func</span>() {
-    ch &lt;- <span class="fn">compute</span>()
-  }()
+<!-- ═══════════════ CONCURRENCY ═══════════════ -->
+<section id="go-concurrency">
+  <div class="sh"><div class="sdot go"></div><span class="stitle">Concurrency</span><span class="ssub">goroutine · channel · sync</span></div>
+  <div class="grid g2">
 
-  result := &lt;-ch <span class="cm">// block until ready</span>
-  fmt.<span class="fn">Println</span>(result)
-}
+    <div class="card go">
+      <div class="ch"><span class="ci">🚀</span><span class="cl go">Goroutine &amp; Channel</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td"><strong>goroutine</strong> = lightweight thread ของ Go, <span class="ic">go func()</span> รัน async ทันที<br/><strong>channel</strong> = ท่อส่งข้อมูลระหว่าง goroutine อย่างปลอดภัย<br/><strong>buffered</strong> = ไม่ block จนกว่าจะเต็ม, <strong>unbuffered</strong> = block จนมีคนรับ</div>
+      <pre><code>ch := <span class="fn">make</span>(<span class="kw">chan</span> <span class="tp">int</span>, <span class="nu">1</span>) <span class="cm">// buffered จุ 1</span>
 
-<span class="cm">// fan-out pattern</span>
+<span class="kw">go func</span>() {
+  ch &lt;- <span class="fn">compute</span>() <span class="cm">// ส่งค่าเข้า channel</span>
+}()
+
+result := &lt;-ch <span class="cm">// block รอจนได้ค่า</span>
+
+<span class="cm">// fan-out: ส่งงานหลายชิ้นพร้อมกัน</span>
 <span class="kw">func</span> <span class="fn">fanOut</span>(jobs []<span class="tp">Job</span>) []<span class="tp">Result</span> {
   ch := <span class="fn">make</span>(<span class="kw">chan</span> <span class="tp">Result</span>, <span class="fn">len</span>(jobs))
   <span class="kw">for</span> _, j := <span class="kw">range</span> jobs {
@@ -440,18 +294,15 @@ p.ID = <span class="str">"p1"</span>  <span class="cm">// access Base fields</sp
   <span class="kw">for</span> i := <span class="kw">range</span> res { res[i] = &lt;-ch }
   <span class="kw">return</span> res
 }</code></pre>
-      </div>
+    </div>
 
-      <div class="card go">
-        <div class="card-head">
-          <span class="card-icon">🔒</span>
-          <span class="card-label go">Context & WaitGroup</span>
-        </div>
-        <pre><code>ctx, cancel := context.<span class="fn">WithTimeout</span>(
-  context.<span class="fn">Background</span>(),
-  <span class="nu">5</span>*time.Second,
+    <div class="card go">
+      <div class="ch"><span class="ci">⏱</span><span class="cl go">Context &amp; WaitGroup</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td"><strong>context</strong> ส่ง timeout/cancel ผ่าน call chain — ต้องส่งต่อทุก function เสมอ<br/><strong>WaitGroup</strong> รอให้ทุก goroutine ทำเสร็จก่อน<br/><strong>select</strong> = switch สำหรับ channel รับหลาย channel พร้อมกัน</div>
+      <pre><code>ctx, cancel := context.<span class="fn">WithTimeout</span>(
+  context.<span class="fn">Background</span>(), <span class="nu">5</span>*time.Second,
 )
-<span class="kw">defer</span> <span class="fn">cancel</span>()
+<span class="kw">defer</span> <span class="fn">cancel</span>() <span class="cm">// ต้อง defer cancel เสมอ</span>
 
 <span class="kw">var</span> wg sync.<span class="tp">WaitGroup</span>
 <span class="kw">for</span> _, item := <span class="kw">range</span> items {
@@ -463,156 +314,125 @@ p.ID = <span class="str">"p1"</span>  <span class="cm">// access Base fields</sp
 }
 wg.<span class="fn">Wait</span>()
 
-<span class="cm">// select: listen multiple channels</span>
 <span class="kw">select</span> {
-<span class="kw">case</span> v := &lt;-dataCh:   <span class="fn">handle</span>(v)
-<span class="kw">case</span> &lt;-ctx.<span class="fn">Done</span>():   <span class="kw">return</span> ctx.<span class="fn">Err</span>()
+<span class="kw">case</span> v := &lt;-dataCh: <span class="fn">handle</span>(v)
+<span class="kw">case</span> &lt;-ctx.<span class="fn">Done</span>():  <span class="kw">return</span> ctx.<span class="fn">Err</span>()
 }</code></pre>
-      </div>
+    </div>
 
-      <div class="card go">
-        <div class="card-head">
-          <span class="card-icon">🔐</span>
-          <span class="card-label go">Mutex & sync.Map</span>
-        </div>
-        <pre><code><span class="kw">type</span> <span class="tp">SafeCache</span> <span class="kw">struct</span> {
+    <div class="card go">
+      <div class="ch"><span class="ci">🔐</span><span class="cl go">Mutex &amp; RWMutex</span><span class="freq o">ใช้บ้าง</span></div>
+      <div class="td">ใช้เมื่อหลาย goroutine access ข้อมูลเดียวกันพร้อมกัน<br/><strong>RWMutex</strong> ดีกว่าถ้า read เยอะกว่า write — อ่านพร้อมกันได้หลาย goroutine แต่ write ต้องรอ<br/>ถ้า design ด้วย channel ได้ มักไม่ต้องใช้ mutex เลย</div>
+      <pre><code><span class="kw">type</span> <span class="tp">SafeCache</span> <span class="kw">struct</span> {
   mu    sync.<span class="tp">RWMutex</span>
   store <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">any</span>
 }
 
+<span class="cm">// RLock: read พร้อมกันได้หลาย goroutine</span>
 <span class="kw">func</span> (c *<span class="tp">SafeCache</span>) <span class="fn">Get</span>(k <span class="tp">string</span>) <span class="tp">any</span> {
-  c.mu.<span class="fn">RLock</span>()
-  <span class="kw">defer</span> c.mu.<span class="fn">RUnlock</span>()
+  c.mu.<span class="fn">RLock</span>(); <span class="kw">defer</span> c.mu.<span class="fn">RUnlock</span>()
   <span class="kw">return</span> c.store[k]
 }
 
+<span class="cm">// Lock: write ได้ครั้งละตัวเดียว</span>
 <span class="kw">func</span> (c *<span class="tp">SafeCache</span>) <span class="fn">Set</span>(k <span class="tp">string</span>, v <span class="tp">any</span>) {
-  c.mu.<span class="fn">Lock</span>()
-  <span class="kw">defer</span> c.mu.<span class="fn">Unlock</span>()
+  c.mu.<span class="fn">Lock</span>(); <span class="kw">defer</span> c.mu.<span class="fn">Unlock</span>()
   c.store[k] = v
 }</code></pre>
-      </div>
+    </div>
 
-      <div class="card go">
-        <div class="card-head">
-          <span class="card-icon">🏃</span>
-          <span class="card-label go">errgroup (parallel tasks)</span>
-        </div>
-        <pre><code><span class="kw">import</span> <span class="str">"golang.org/x/sync/errgroup"</span>
+    <div class="card go">
+      <div class="ch"><span class="ci">🏃</span><span class="cl go">errgroup — Parallel Tasks</span><span class="freq o">ใช้บ้าง</span></div>
+      <div class="td">รัน goroutines parallel แล้วรอทุกตัว — ถ้ามี error ตัวไหนจะ cancel ทุกตัวให้อัตโนมัติ<br/>เหมาะมากสำหรับ <strong>parallel fetch</strong> เช่น ดึงข้อมูลจาก 2-3 service พร้อมกัน แทนที่จะรอทีละตัว</div>
+      <pre><code><span class="kw">import</span> <span class="str">"golang.org/x/sync/errgroup"</span>
 
 <span class="kw">func</span> <span class="fn">fetchAll</span>(ctx <span class="tp">context.Context</span>) <span class="tp">error</span> {
   g, ctx := errgroup.<span class="fn">WithContext</span>(ctx)
 
-  g.<span class="fn">Go</span>(<span class="kw">func</span>() <span class="tp">error</span> {
-    <span class="kw">return</span> <span class="fn">fetchUsers</span>(ctx)
-  })
-  g.<span class="fn">Go</span>(<span class="kw">func</span>() <span class="tp">error</span> {
-    <span class="kw">return</span> <span class="fn">fetchPosts</span>(ctx)
-  })
+  g.<span class="fn">Go</span>(<span class="kw">func</span>() <span class="tp">error</span> { <span class="kw">return</span> <span class="fn">fetchUsers</span>(ctx) })
+  g.<span class="fn">Go</span>(<span class="kw">func</span>() <span class="tp">error</span> { <span class="kw">return</span> <span class="fn">fetchPosts</span>(ctx) })
 
-  <span class="kw">return</span> g.<span class="fn">Wait</span>() <span class="cm">// รอทุก goroutine, return error แรก</span>
+  <span class="cm">// รอทุกตัว — return error แรกที่เจอ</span>
+  <span class="kw">return</span> g.<span class="fn">Wait</span>()
 }</code></pre>
-      </div>
-    </div>
-  </section>
-
-  <!-- ══════════════════════════════════════════
-       SECTION: ERROR HANDLING
-  ══════════════════════════════════════════ -->
-  <section id="go-error">
-    <div class="section-header">
-      <div class="section-dot go"></div>
-      <span class="section-title">Error Handling</span>
-      <span class="section-sub">idiomatic go errors</span>
     </div>
 
-    <div class="grid grid-2">
-      <div class="card go">
-        <div class="card-head">
-          <span class="card-icon">🚨</span>
-          <span class="card-label go">Custom Error Types</span>
-        </div>
-        <pre><code><span class="kw">type</span> <span class="tp">NotFoundError</span> <span class="kw">struct</span> {
+  </div>
+</section>
+
+<!-- ═══════════════ ERROR HANDLING ═══════════════ -->
+<section id="go-error">
+  <div class="sh"><div class="sdot go"></div><span class="stitle">Error Handling</span><span class="ssub">idiomatic go errors</span></div>
+  <div class="grid g2">
+
+    <div class="card go">
+      <div class="ch"><span class="ci">🚨</span><span class="cl go">Custom Error &amp; Sentinel</span><span class="freq o">ใช้บ้าง</span></div>
+      <div class="td">สร้าง error type ที่มี context เพิ่ม เช่น resource ชื่ออะไร ID อะไร<br/><strong>Sentinel error</strong> คือ error ที่ประกาศไว้แค่ครั้งเดียว ใช้เปรียบเทียบด้วย <span class="ic">errors.Is()</span><br/>ตั้งชื่อขึ้นต้น <span class="ic">Err</span> เสมอ เช่น <span class="ic">ErrNotFound</span></div>
+      <pre><code><span class="kw">type</span> <span class="tp">NotFoundError</span> <span class="kw">struct</span> {
   Resource <span class="tp">string</span>
   ID       <span class="tp">string</span>
 }
-
 <span class="kw">func</span> (e *<span class="tp">NotFoundError</span>) <span class="fn">Error</span>() <span class="tp">string</span> {
   <span class="kw">return</span> fmt.<span class="fn">Sprintf</span>(<span class="str">"%s %s not found"</span>, e.Resource, e.ID)
 }
 
-<span class="cm">// sentinel errors</span>
+<span class="cm">// sentinel — ประกาศที่ package level</span>
 <span class="kw">var</span> (
-  <span class="tp">ErrUnauthorized</span> = errors.<span class="fn">New</span>(<span class="str">"unauthorized"</span>)
-  <span class="tp">ErrInvalidInput</span> = errors.<span class="fn">New</span>(<span class="str">"invalid input"</span>)
+  ErrUnauthorized = errors.<span class="fn">New</span>(<span class="str">"unauthorized"</span>)
+  ErrInvalidInput = errors.<span class="fn">New</span>(<span class="str">"invalid input"</span>)
 )</code></pre>
-      </div>
+    </div>
 
-      <div class="card go">
-        <div class="card-head">
-          <span class="card-icon">🔍</span>
-          <span class="card-label go">errors.Is / errors.As</span>
-        </div>
-        <pre><code>err := <span class="fn">getUser</span>(ctx, id)
+    <div class="card go">
+      <div class="ch"><span class="ci">🔍</span><span class="cl go">errors.Is / As / %w</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td"><strong>errors.Is</strong> — เช็ค sentinel error (unwrap chain ทั้งหมด)<br/><strong>errors.As</strong> — ดึง type ออกจาก error chain<br/><strong>%w</strong> — wrap error พร้อมเพิ่ม context เพื่อ trace กลับไปได้ เป็น pattern หลักที่ใช้ทุก function</div>
+      <pre><code>err := <span class="fn">getUser</span>(ctx, id)
 
-<span class="cm">// ตรวจ sentinel error</span>
-<span class="kw">if</span> errors.<span class="fn">Is</span>(err, <span class="tp">ErrUnauthorized</span>) {
-  <span class="cm">// handle 401</span>
+<span class="cm">// Is: เช็ค sentinel (ทะลุ wrap chain)</span>
+<span class="kw">if</span> errors.<span class="fn">Is</span>(err, ErrUnauthorized) { <span class="cm">/* 401 */</span> }
+
+<span class="cm">// As: ดึง custom error type ออกมา</span>
+<span class="kw">var</span> nf *<span class="tp">NotFoundError</span>
+<span class="kw">if</span> errors.<span class="fn">As</span>(err, &nf) {
+  fmt.<span class="fn">Println</span>(<span class="str">"missing:"</span>, nf.ID)
 }
 
-<span class="cm">// ตรวจ type ของ error</span>
-<span class="kw">var</span> notFound *<span class="tp">NotFoundError</span>
-<span class="kw">if</span> errors.<span class="fn">As</span>(err, &notFound) {
-  fmt.<span class="fn">Println</span>(notFound.ID)
-}
-
-<span class="cm">// wrap error ด้วย context</span>
+<span class="cm">// %w: wrap + เพิ่ม context ให้ trace ได้</span>
 <span class="kw">return</span> fmt.<span class="fn">Errorf</span>(<span class="str">"getUser: %w"</span>, err)</code></pre>
-      </div>
-    </div>
-  </section>
-
-  <!-- ══════════════════════════════════════════
-       SECTION: PROTO3
-  ══════════════════════════════════════════ -->
-  <section id="proto">
-    <div class="section-header">
-      <div class="section-dot grpc"></div>
-      <span class="section-title">Protocol Buffers 3</span>
-      <span class="section-sub">schema-first contract</span>
     </div>
 
-    <div class="grid grid-2">
-      <div class="card grpc">
-        <div class="card-head">
-          <span class="card-icon">📝</span>
-          <span class="card-label grpc">Service Definition</span>
-        </div>
-        <pre><code><span class="kw">syntax</span> = <span class="str">"proto3"</span>;
+  </div>
+</section>
+
+<!-- ═══════════════ PROTO3 ═══════════════ -->
+<section id="proto">
+  <div class="sh"><div class="sdot grpc"></div><span class="stitle">Protocol Buffers 3</span><span class="ssub">schema-first contract</span></div>
+  <div class="grid g2">
+
+    <div class="card grpc">
+      <div class="ch"><span class="ci">📝</span><span class="cl grpc">Service Definition</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">เขียน <span class="ic">.proto</span> ก่อน แล้ว generate Go code อัตโนมัติ — ทุก service ต้องมี proto เป็น contract<br/><strong>go_package</strong> กำหนด import path ของ generated code — ดู project นี้ที่ <span class="ic">notification/base/v1</span> และ <span class="ic">notification/user/v1</span></div>
+      <pre><code><span class="kw">syntax</span> = <span class="str">"proto3"</span>;
 <span class="kw">package</span> notification.base.v1;
 <span class="kw">option</span> go_package = <span class="str">"./gen/go/notification/base/v1"</span>;
 
 <span class="kw">service</span> <span class="tp">NotificationService</span> {
   <span class="kw">rpc</span> <span class="fn">SendNotification</span>(<span class="tp">SendNotificationRequest</span>)
-    <span class="kw">returns</span> (<span class="tp">SendNotificationResponse</span>) {}
-
+      <span class="kw">returns</span> (<span class="tp">SendNotificationResponse</span>) {}
   <span class="kw">rpc</span> <span class="fn">BroadcastNotification</span>(<span class="tp">BroadcastRequest</span>)
-    <span class="kw">returns</span> (<span class="tp">BroadcastResponse</span>) {}
+      <span class="kw">returns</span> (<span class="tp">BroadcastResponse</span>) {}
 }
-
 <span class="kw">enum</span> <span class="tp">NotificationType</span> {
-  NOTIFICATION_TYPE_UNSPECIFIED = <span class="nu">0</span>;
-  NOTIFICATION_TYPE_POST_LIKED  = <span class="nu">1</span>;
+  NOTIFICATION_TYPE_UNSPECIFIED   = <span class="nu">0</span>; <span class="cm">// ต้องมี 0 เสมอ</span>
+  NOTIFICATION_TYPE_POST_LIKED    = <span class="nu">1</span>;
   NOTIFICATION_TYPE_POST_COMMENTED = <span class="nu">2</span>;
 }</code></pre>
-      </div>
+    </div>
 
-      <div class="card grpc">
-        <div class="card-head">
-          <span class="card-icon">📨</span>
-          <span class="card-label grpc">Message Types</span>
-        </div>
-        <pre><code><span class="kw">message</span> <span class="tp">SendNotificationRequest</span> {
+    <div class="card grpc">
+      <div class="ch"><span class="ci">📨</span><span class="cl grpc">Message Types</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">field number (= 1, 2, 3...) คือ identifier ใน binary — <strong>ห้ามเปลี่ยนหลัง deploy แล้ว</strong> จะทำ backward compat พัง<br/>เพิ่ม field ใหม่ได้ แต่อย่าลบหรือเปลี่ยน number เก่า</div>
+      <pre><code><span class="kw">message</span> <span class="tp">SendNotificationRequest</span> {
   <span class="tp">string</span>           receiver_user_id = <span class="nu">1</span>;
   <span class="tp">string</span>           sender_user_id   = <span class="nu">2</span>;
   <span class="tp">NotificationType</span> type             = <span class="nu">3</span>;
@@ -625,150 +445,98 @@ wg.<span class="fn">Wait</span>()
   <span class="tp">string</span> body    = <span class="nu">3</span>;
   <span class="tp">string</span> post_id = <span class="nu">4</span>;
 }
-
-<span class="cm">// generate code</span>
-<span class="cm">// protoc --go_out=. --go-grpc_out=. *.proto</span></code></pre>
-      </div>
-
-      <div class="card grpc">
-        <div class="card-head">
-          <span class="card-icon">📡</span>
-          <span class="card-label grpc">Streaming Types</span>
-        </div>
-        <div class="tbl-wrap">
-          <table>
-            <thead>
-              <tr><th>Type</th><th>Syntax</th><th>Use case</th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><span class="badge badge-blue">Unary</span></td>
-                <td class="mono">rpc Get(Req) returns (Res)</td>
-                <td>request-response ปกติ</td>
-              </tr>
-              <tr>
-                <td><span class="badge badge-green">Server Stream</span></td>
-                <td class="mono">returns (stream Res)</td>
-                <td>push updates, logs</td>
-              </tr>
-              <tr>
-                <td><span class="badge badge-green">Client Stream</span></td>
-                <td class="mono">rpc Upload(stream Req)</td>
-                <td>file upload, batch</td>
-              </tr>
-              <tr>
-                <td><span class="badge badge-red">Bidirectional</span></td>
-                <td class="mono">stream Req / stream Res</td>
-                <td>chat, real-time</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card grpc">
-        <div class="card-head">
-          <span class="card-icon">🔢</span>
-          <span class="card-label grpc">Field Types Quick Ref</span>
-        </div>
-        <div class="tbl-wrap">
-          <table>
-            <thead>
-              <tr><th>Proto type</th><th>Go type</th></tr>
-            </thead>
-            <tbody>
-              <tr><td class="mono">string</td><td class="mono">string</td></tr>
-              <tr><td class="mono">int32 / int64</td><td class="mono">int32 / int64</td></tr>
-              <tr><td class="mono">bool</td><td class="mono">bool</td></tr>
-              <tr><td class="mono">bytes</td><td class="mono">[]byte</td></tr>
-              <tr><td class="mono">repeated T</td><td class="mono">[]T</td></tr>
-              <tr><td class="mono">map&lt;K,V&gt;</td><td class="mono">map[K]V</td></tr>
-              <tr><td class="mono">google.protobuf.Timestamp</td><td class="mono">*timestamppb.Timestamp</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ══════════════════════════════════════════
-       SECTION: gRPC SERVER
-  ══════════════════════════════════════════ -->
-  <section id="grpc-server">
-    <div class="section-header">
-      <div class="section-dot grpc"></div>
-      <span class="section-title">gRPC Server (Go)</span>
-      <span class="section-sub">setup · interceptor · error</span>
+<span class="cm">// generate: protoc --go_out=. --go-grpc_out=. *.proto</span></code></pre>
     </div>
 
-    <div class="grid grid-2">
-      <div class="card grpc">
-        <div class="card-head">
-          <span class="card-icon">🖥</span>
-          <span class="card-label grpc">Server Setup</span>
-        </div>
-        <pre><code><span class="kw">func</span> <span class="fn">main</span>() {
+    <div class="card grpc">
+      <div class="ch"><span class="ci">📡</span><span class="cl grpc">Streaming Types</span><span class="freq r">ใช้น้อย</span></div>
+      <div class="td">Streaming ใช้กรณีพิเศษจริงๆ เท่านั้น — <strong>Unary</strong> คือแบบที่ใช้เกือบทุกครั้ง<br/>Bidirectional ซับซ้อนมาก ควรพิจารณา WebSocket แทนก่อน Server Stream อาจพิจารณาถ้าต้อง push real-time</div>
+      <div class="tw"><table>
+        <thead><tr><th>Type</th><th>Syntax</th><th>Use case</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge bb">Unary</span></td><td class="mono">rpc Get(Req) returns (Res)</td><td>request-response ปกติ <strong>ใช้บ่อยสุด</strong></td></tr>
+          <tr><td><span class="badge bg">Server Stream</span></td><td class="mono">returns (stream Res)</td><td>push updates, live log</td></tr>
+          <tr><td><span class="badge bg">Client Stream</span></td><td class="mono">rpc Upload(stream Req)</td><td>file upload, batch insert</td></tr>
+          <tr><td><span class="badge br">Bidirectional</span></td><td class="mono">stream / stream</td><td>chat, game — ซับซ้อน หลีกเลี่ยงถ้าได้</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="card grpc">
+      <div class="ch"><span class="ci">🔢</span><span class="cl grpc">Field Types Quick Ref</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">Type mapping ระหว่าง proto3 → Go ที่ต้องจำ<br/><strong>repeated</strong> = slice, <strong>map</strong> = map ตรงๆ<br/>Timestamp ต้อง import <span class="ic">google/protobuf/timestamp.proto</span></div>
+      <div class="tw"><table>
+        <thead><tr><th>Proto type</th><th>Go type</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">string</td><td class="mono">string</td></tr>
+          <tr><td class="mono">int32 / int64</td><td class="mono">int32 / int64</td></tr>
+          <tr><td class="mono">bool</td><td class="mono">bool</td></tr>
+          <tr><td class="mono">bytes</td><td class="mono">[]byte</td></tr>
+          <tr><td class="mono">repeated T</td><td class="mono">[]T (slice)</td></tr>
+          <tr><td class="mono">map&lt;K,V&gt;</td><td class="mono">map[K]V</td></tr>
+          <tr><td class="mono">google.protobuf.Timestamp</td><td class="mono">*timestamppb.Timestamp</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════ gRPC SERVER ═══════════════ -->
+<section id="grpc-server">
+  <div class="sh"><div class="sdot grpc"></div><span class="stitle">gRPC Server (Go)</span><span class="ssub">setup · interceptor · errors</span></div>
+  <div class="grid g2">
+
+    <div class="card grpc">
+      <div class="ch"><span class="ci">🖥</span><span class="cl grpc">Server Setup</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">เขียนครั้งเดียวใน <span class="ic">main.go</span> — register service แล้ว Serve()<br/><strong>reflection</strong> เปิดตอน dev ใช้ grpcurl test ได้ — <strong>ปิดใน production เสมอ</strong></div>
+      <pre><code><span class="kw">func</span> <span class="fn">main</span>() {
   lis, _ := net.<span class="fn">Listen</span>(<span class="str">"tcp"</span>, <span class="str">":50051"</span>)
 
   s := grpc.<span class="fn">NewServer</span>(
-    grpc.<span class="fn">UnaryInterceptor</span>(loggingInterceptor),
     grpc.<span class="fn">ChainUnaryInterceptor</span>(
       authInterceptor,
-      recoveryInterceptor,
+      loggingInterceptor,
     ),
   )
 
-  pb.<span class="fn">RegisterNotificationServiceServer</span>(
-    s,
-    &<span class="tp">notificationServer</span>{},
-  )
-  reflection.<span class="fn">Register</span>(s) <span class="cm">// dev only</span>
+  pb.<span class="fn">RegisterNotificationServiceServer</span>(s, &<span class="tp">handler</span>{})
+  reflection.<span class="fn">Register</span>(s) <span class="cm">// dev only — ปิด production!</span>
 
   log.<span class="fn">Fatal</span>(s.<span class="fn">Serve</span>(lis))
 }</code></pre>
-      </div>
+    </div>
 
-      <div class="card grpc">
-        <div class="card-head">
-          <span class="card-icon">🛡</span>
-          <span class="card-label grpc">Interceptor (Middleware)</span>
-        </div>
-        <pre><code><span class="kw">func</span> <span class="fn">loggingInterceptor</span>(
-  ctx <span class="tp">context.Context</span>,
-  req <span class="tp">any</span>,
+    <div class="card grpc">
+      <div class="ch"><span class="ci">🛡</span><span class="cl grpc">Interceptor (Middleware)</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">เทียบกับ HTTP middleware — รันก่อน/หลัง handler ทุกตัว<br/>ใช้สำหรับ <strong>auth, logging, panic recovery, tracing</strong><br/>Chain interceptors ได้ด้วย <span class="ic">ChainUnaryInterceptor</span> — เรียงลำดับสำคัญ</div>
+      <pre><code><span class="kw">func</span> <span class="fn">loggingInterceptor</span>(
+  ctx <span class="tp">context.Context</span>, req <span class="tp">any</span>,
   info *grpc.<span class="tp">UnaryServerInfo</span>,
   handler grpc.<span class="tp">UnaryHandler</span>,
 ) (<span class="tp">any</span>, <span class="tp">error</span>) {
   start := time.<span class="fn">Now</span>()
 
-  resp, err := <span class="fn">handler</span>(ctx, req)
+  resp, err := <span class="fn">handler</span>(ctx, req) <span class="cm">// เรียก handler จริง</span>
 
   slog.<span class="fn">Info</span>(<span class="str">"gRPC"</span>,
     <span class="str">"method"</span>, info.FullMethod,
-    <span class="str">"duration"</span>, time.<span class="fn">Since</span>(start),
-    <span class="str">"error"</span>, err,
+    <span class="str">"dur"</span>, time.<span class="fn">Since</span>(start),
+    <span class="str">"err"</span>, err,
   )
   <span class="kw">return</span> resp, err
 }</code></pre>
-      </div>
+    </div>
 
-      <div class="card grpc">
-        <div class="card-head">
-          <span class="card-icon">⚠️</span>
-          <span class="card-label grpc">gRPC Status Errors</span>
-        </div>
-        <pre><code><span class="kw">import</span> (
-  <span class="str">"google.golang.org/grpc/codes"</span>
-  <span class="str">"google.golang.org/grpc/status"</span>
-)
-
-<span class="kw">func</span> (s *<span class="tp">server</span>) <span class="fn">GetUser</span>(
-  ctx <span class="tp">context.Context</span>,
-  req *pb.<span class="tp">GetUserRequest</span>,
+    <div class="card grpc">
+      <div class="ch"><span class="ci">⚠️</span><span class="cl grpc">gRPC Status Errors</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">ห้าม return Go error ธรรมดาจาก handler — ต้อง wrap ด้วย <span class="ic">status.Errorf()</span> เสมอ<br/>แปลง domain error → gRPC code ที่ handler layer เป็น responsibility ของ Primary Adapter</div>
+      <pre><code><span class="kw">func</span> (s *<span class="tp">server</span>) <span class="fn">GetUser</span>(
+  ctx <span class="tp">context.Context</span>, req *pb.<span class="tp">GetUserRequest</span>,
 ) (*pb.<span class="tp">UserResponse</span>, <span class="tp">error</span>) {
 
   user, err := s.repo.<span class="fn">FindByID</span>(ctx, req.Id)
-  <span class="kw">if</span> errors.<span class="fn">Is</span>(err, <span class="tp">ErrNotFound</span>) {
+  <span class="kw">if</span> errors.<span class="fn">Is</span>(err, ErrNotFound) {
     <span class="kw">return</span> <span class="kw">nil</span>, status.<span class="fn">Errorf</span>(
       codes.NotFound, <span class="str">"user %s not found"</span>, req.Id,
     )
@@ -778,58 +546,42 @@ wg.<span class="fn">Wait</span>()
   }
   <span class="kw">return</span> <span class="fn">toProto</span>(user), <span class="kw">nil</span>
 }</code></pre>
-      </div>
-
-      <div class="card grpc">
-        <div class="card-head">
-          <span class="card-icon">🔑</span>
-          <span class="card-label grpc">gRPC Status Codes</span>
-        </div>
-        <div class="tbl-wrap">
-          <table>
-            <thead>
-              <tr><th>Code</th><th>HTTP equiv</th><th>When to use</th></tr>
-            </thead>
-            <tbody>
-              <tr><td class="mono">OK</td><td>200</td><td>success</td></tr>
-              <tr><td class="mono">InvalidArgument</td><td>400</td><td>validation fail</td></tr>
-              <tr><td class="mono">NotFound</td><td>404</td><td>resource missing</td></tr>
-              <tr><td class="mono">AlreadyExists</td><td>409</td><td>duplicate</td></tr>
-              <tr><td class="mono">Unauthenticated</td><td>401</td><td>no/bad token</td></tr>
-              <tr><td class="mono">PermissionDenied</td><td>403</td><td>no access</td></tr>
-              <tr><td class="mono">Internal</td><td>500</td><td>unexpected err</td></tr>
-              <tr><td class="mono">Unavailable</td><td>503</td><td>service down</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ══════════════════════════════════════════
-       SECTION: gRPC CLIENT
-  ══════════════════════════════════════════ -->
-  <section id="grpc-client">
-    <div class="section-header">
-      <div class="section-dot grpc"></div>
-      <span class="section-title">gRPC Client (Go)</span>
-      <span class="section-sub">dial · metadata · retry</span>
     </div>
 
-    <div class="grid grid-2">
-      <div class="card grpc">
-        <div class="card-head">
-          <span class="card-icon">📞</span>
-          <span class="card-label grpc">Client Connection</span>
-        </div>
-        <pre><code>conn, err := grpc.<span class="fn">NewClient</span>(
+    <div class="card grpc">
+      <div class="ch"><span class="ci">🔑</span><span class="cl grpc">Status Codes Reference</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">Map domain error → gRPC code ให้ถูกต้อง client จะ handle ได้ถูก<br/>gRPC-gateway แปลง code นี้เป็น HTTP status ให้อัตโนมัติ</div>
+      <div class="tw"><table>
+        <thead><tr><th>Code</th><th>HTTP</th><th>เมื่อไหร่ใช้</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">OK</td><td>200</td><td>สำเร็จ</td></tr>
+          <tr><td class="mono">InvalidArgument</td><td>400</td><td>validation ไม่ผ่าน, input ผิด</td></tr>
+          <tr><td class="mono">NotFound</td><td>404</td><td>ไม่พบ resource</td></tr>
+          <tr><td class="mono">AlreadyExists</td><td>409</td><td>ข้อมูลซ้ำ</td></tr>
+          <tr><td class="mono">Unauthenticated</td><td>401</td><td>ไม่มี / token ผิด</td></tr>
+          <tr><td class="mono">PermissionDenied</td><td>403</td><td>ไม่มีสิทธิ์</td></tr>
+          <tr><td class="mono">Internal</td><td>500</td><td>error ที่ไม่คาดคิด</td></tr>
+          <tr><td class="mono">Unavailable</td><td>503</td><td>service down / retry ได้</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════ gRPC CLIENT ═══════════════ -->
+<section id="grpc-client">
+  <div class="sh"><div class="sdot grpc"></div><span class="stitle">gRPC Client (Go)</span><span class="ssub">dial · call · metadata</span></div>
+  <div class="grid g2">
+
+    <div class="card grpc">
+      <div class="ch"><span class="ci">📞</span><span class="cl grpc">Client Connection</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">สร้าง connection <strong>ครั้งเดียว</strong> ตอน startup แล้วเก็บไว้ใน struct — <strong>อย่า dial ใหม่ทุก request</strong><br/><span class="ic">insecure</span> ใช้ได้ตอน dev เท่านั้น production ต้องใช้ TLS</div>
+      <pre><code>conn, err := grpc.<span class="fn">NewClient</span>(
   <span class="str">"noti-service:50051"</span>,
   grpc.<span class="fn">WithTransportCredentials</span>(
-    insecure.<span class="fn">NewCredentials</span>(), <span class="cm">// dev</span>
+    insecure.<span class="fn">NewCredentials</span>(), <span class="cm">// dev เท่านั้น</span>
   ),
-  grpc.<span class="fn">WithDefaultServiceConfig</span>(`{
-    "loadBalancingPolicy": "round_robin"
-  }`),
 )
 <span class="kw">defer</span> conn.<span class="fn">Close</span>()
 
@@ -839,167 +591,131 @@ resp, err := client.<span class="fn">SendNotification</span>(ctx,
   &pb.<span class="tp">SendNotificationRequest</span>{
     ReceiverUserId: <span class="str">"user-123"</span>,
     Type: pb.NOTIFICATION_TYPE_POST_LIKED,
+    RefId: <span class="str">"post-456"</span>,
   },
 )</code></pre>
-      </div>
+    </div>
 
-      <div class="card grpc">
-        <div class="card-head">
-          <span class="card-icon">🏷</span>
-          <span class="card-label grpc">Metadata (Headers)</span>
-        </div>
-        <pre><code><span class="kw">import</span> <span class="str">"google.golang.org/grpc/metadata"</span>
+    <div class="card grpc">
+      <div class="ch"><span class="ci">🏷</span><span class="cl grpc">Metadata (Headers)</span><span class="freq o">ใช้บ้าง</span></div>
+      <div class="td">Metadata คือ HTTP headers ของ gRPC — ใช้ส่ง auth token, request-id, trace id<br/><strong>ทำใน interceptor แทน</strong> จะได้ไม่ต้องเขียนทุก call<br/>Outgoing = ส่งออกจาก client, Incoming = รับที่ server</div>
+      <pre><code><span class="kw">import</span> <span class="str">"google.golang.org/grpc/metadata"</span>
 
-<span class="cm">// ส่ง metadata ไปกับ request</span>
+<span class="cm">// client: เพิ่ม metadata ก่อน call</span>
 md := metadata.<span class="fn">Pairs</span>(
   <span class="str">"authorization"</span>, <span class="str">"Bearer "</span>+token,
   <span class="str">"x-request-id"</span>,  requestID,
 )
 ctx = metadata.<span class="fn">NewOutgoingContext</span>(ctx, md)
 
-<span class="cm">// รับ metadata ใน server</span>
+<span class="cm">// server: รับ metadata จาก request</span>
 md, ok := metadata.<span class="fn">FromIncomingContext</span>(ctx)
 <span class="kw">if</span> ok {
-  auth := md.<span class="fn">Get</span>(<span class="str">"authorization"</span>)
+  tokens := md.<span class="fn">Get</span>(<span class="str">"authorization"</span>)
+  _ = tokens
 }</code></pre>
-      </div>
-    </div>
-  </section>
-
-  <!-- ══════════════════════════════════════════
-       SECTION: HEXAGONAL ARCH
-  ══════════════════════════════════════════ -->
-  <section id="hex">
-    <div class="section-header">
-      <div class="section-dot hex"></div>
-      <span class="section-title">Hexagonal Architecture</span>
-      <span class="section-sub">ports & adapters</span>
     </div>
 
-    <div class="grid grid-3">
-      <div class="card hex">
-        <div class="card-head">
-          <span class="card-icon">🎯</span>
-          <span class="card-label hex">Domain Core</span>
-        </div>
-        <div class="prose">
-          <strong>ไม่รู้จักโลกภายนอกเลย</strong><br/>
-          <ul>
-            <li>Entities (struct, business rules)</li>
-            <li>Use Cases (application logic)</li>
-            <li>Port definitions (interfaces)</li>
-          </ul>
-          <br/>
-          <strong>ห้าม import:</strong><br/>
-          <span class="hl">database/sql</span> <span class="hl">net/http</span> <span class="hl">grpc</span> <span class="hl">firebase</span>
-        </div>
-      </div>
+  </div>
+</section>
 
-      <div class="card hex">
-        <div class="card-head">
-          <span class="card-icon">🔌</span>
-          <span class="card-label hex">Ports (Interfaces)</span>
-        </div>
-        <div class="prose">
-          <strong>Input Port</strong> = use case interface<br/>
-          ถูก implement โดย Use Case<br/>
-          ถูก call โดย Primary Adapter<br/>
-          <br/>
-          <strong>Output Port</strong> = dependency interface<br/>
-          ถูก implement โดย Secondary Adapter<br/>
-          ถูก call โดย Use Case<br/>
-        </div>
-      </div>
+<!-- ═══════════════ HEXAGONAL CONCEPT ═══════════════ -->
+<section id="hex">
+  <div class="sh"><div class="sdot hex"></div><span class="stitle">Hexagonal Architecture</span><span class="ssub">ports &amp; adapters — concept</span></div>
+  <div class="grid g3">
 
-      <div class="card hex">
-        <div class="card-head">
-          <span class="card-icon">🔄</span>
-          <span class="card-label hex">Adapters</span>
-        </div>
-        <div class="prose">
-          <strong>Primary (Driving)</strong><br/>
-          <span class="hl">gRPC handler</span> <span class="hl">HTTP handler</span> <span class="hl">CLI</span><br/>
-          <br/>
-          <strong>Secondary (Driven)</strong><br/>
-          <span class="hl">postgres repo</span> <span class="hl">redis cache</span><br/>
-          <span class="hl">FCM adapter</span> <span class="hl">kafka producer</span><br/>
-          <br/>
-          แต่ละ adapter แปลง domain ↔ external format
-        </div>
+    <div class="card hex">
+      <div class="ch"><span class="ci">🎯</span><span class="cl hex">Domain Core</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td"><strong>ตรงกลางสุด</strong> — รู้จักแค่ business rules ไม่รู้จักโลกภายนอกเลย<br/>ถ้า pure จริงๆ จะ test ได้โดยไม่ต้อง infra เลย<br/><strong>ห้าม import:</strong> <span class="ic">database/sql</span> <span class="ic">net/http</span> <span class="ic">grpc</span> <span class="ic">firebase</span></div>
+      <div class="prose">
+        <ul>
+          <li>Entities (struct + business rules)</li>
+          <li>Use Cases (application logic)</li>
+          <li>Port definitions (interfaces)</li>
+        </ul>
       </div>
     </div>
 
-    <div class="divider">folder structure</div>
+    <div class="card hex">
+      <div class="ch"><span class="ci">🔌</span><span class="cl hex">Ports (Interfaces)</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">Port คือ interface ที่ <strong>Domain กำหนดเอง</strong> — "ฉันต้องการอะไร" โดยไม่สนว่าใครจะมา implement<br/><strong>Input port</strong> = use case interface (Primary เรียก), <strong>Output port</strong> = dependency (Secondary implement)</div>
+      <div class="prose">
+        <strong>Input Port</strong> — use case interface<br/>
+        ถูก implement โดย Use Case<br/><br/>
+        <strong>Output Port</strong> — dependency interface<br/>
+        ถูก implement โดย Secondary Adapter
+      </div>
+    </div>
 
-    <div class="grid grid-2">
-      <div class="card hex">
-        <div class="card-head">
-          <span class="card-icon">📁</span>
-          <span class="card-label hex">Recommended Structure</span>
-        </div>
-        <pre><code>notification-service/
+    <div class="card hex">
+      <div class="ch"><span class="ci">🔄</span><span class="cl hex">Adapters</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">แปลงภาษาระหว่าง domain กับโลกภายนอก — swap ได้โดยไม่แตะ domain<br/><strong>Primary</strong> = รับ request เข้า, <strong>Secondary</strong> = ถูก domain เรียกออก</div>
+      <div class="prose">
+        <strong>Primary (Driving)</strong><br/>
+        <span class="hl">gRPC handler</span> <span class="hl">HTTP handler</span> <span class="hl">CLI</span><br/><br/>
+        <strong>Secondary (Driven)</strong><br/>
+        <span class="hl">postgres repo</span> <span class="hl">redis</span><br/>
+        <span class="hl">FCM adapter</span> <span class="hl">kafka producer</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="div">folder structure &amp; dependency rule</div>
+  <div class="grid g2">
+
+    <div class="card hex">
+      <div class="ch"><span class="ci">📁</span><span class="cl hex">Recommended Structure</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">แยก folder ตาม layer — <span class="ic">domain</span> ไม่ import ใคร, <span class="ic">adapter</span> import domain<br/>ใส่ทุกอย่างใน <span class="ic">internal/</span> ป้องกัน external package มา import</div>
+      <pre><code>notification-service/
 ├── <span class="fn">cmd/</span>
-│   └── server/main.go        <span class="cm">// wire everything</span>
+│   └── server/main.go      <span class="cm">// wire everything</span>
 ├── <span class="fn">internal/</span>
-│   ├── <span class="fn">domain/</span>             <span class="cm">// core — no deps</span>
+│   ├── <span class="fn">domain/</span>           <span class="cm">// ❌ ห้าม import ใคร</span>
 │   │   ├── entity.go
 │   │   └── errors.go
-│   ├── <span class="fn">port/</span>               <span class="cm">// interfaces</span>
-│   │   ├── input.go          <span class="cm">// use case interfaces</span>
-│   │   └── output.go         <span class="cm">// repo/service interfaces</span>
-│   ├── <span class="fn">usecase/</span>            <span class="cm">// business logic</span>
-│   │   └── send_notification.go
+│   ├── <span class="fn">port/</span>             <span class="cm">// interfaces only</span>
+│   │   ├── input.go
+│   │   └── output.go
+│   ├── <span class="fn">usecase/</span>          <span class="cm">// business logic</span>
+│   │   └── broadcast.go
 │   └── <span class="fn">adapter/</span>
-│       ├── <span class="fn">grpc/</span>           <span class="cm">// primary</span>
-│       │   └── handler.go
-│       ├── <span class="fn">fcm/</span>            <span class="cm">// secondary</span>
-│       │   └── fcm_adapter.go
-│       └── <span class="fn">postgres/</span>       <span class="cm">// secondary</span>
-│           └── noti_repo.go
+│       ├── <span class="fn">grpc/</span>         <span class="cm">// primary</span>
+│       ├── <span class="fn">fcm/</span>          <span class="cm">// secondary</span>
+│       └── <span class="fn">postgres/</span>     <span class="cm">// secondary</span>
 └── <span class="fn">proto/</span></code></pre>
-      </div>
+    </div>
 
-      <div class="card hex">
-        <div class="card-head">
-          <span class="card-icon">📐</span>
-          <span class="card-label hex">Dependency Rule</span>
-        </div>
-        <div class="prose" style="padding-bottom:0">
-          <strong>Dependencies ชี้เข้าหา center เท่านั้น</strong>
-        </div>
-        <pre style="margin-top:12px"><code><span class="cm">// ✅ usecase ขึ้นต่อ port (interface)</span>
-<span class="kw">type</span> <span class="tp">SendNotiUseCase</span> <span class="kw">struct</span> {
-  notiRepo port.<span class="tp">NotiRepository</span>  <span class="cm">// interface</span>
-  fcm      port.<span class="tp">PushNotifier</span>    <span class="cm">// interface</span>
+    <div class="card hex">
+      <div class="ch"><span class="ci">📐</span><span class="cl hex">Dependency Rule</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td"><strong>กฎเดียวที่ต้องจำ:</strong> dependency ชี้เข้าหาตรงกลางเท่านั้น<br/>Domain ไม่รู้จัก adapter, Use case รู้จักแค่ port (interface) ไม่รู้ว่า implementation จริงๆ คืออะไร</div>
+      <pre><code><span class="cm">// ✅ usecase ขึ้นต่อ port — ถูก</span>
+<span class="kw">type</span> <span class="tp">BroadcastUseCase</span> <span class="kw">struct</span> {
+  repo port.<span class="tp">NotiRepository</span> <span class="cm">// interface</span>
+  push port.<span class="tp">PushNotifier</span>   <span class="cm">// interface</span>
 }
 
-<span class="cm">// ✅ adapter ขึ้นต่อ domain/port</span>
+<span class="cm">// ✅ adapter implement port — ถูก</span>
 <span class="kw">type</span> <span class="tp">FCMAdapter</span> <span class="kw">struct</span>{ client *messaging.<span class="tp">Client</span> }
-<span class="cm">// implements port.PushNotifier</span>
+<span class="cm">// implements port.PushNotifier ✓</span>
 
-<span class="cm">// ❌ domain ห้ามขึ้นต่อ adapter</span>
-<span class="cm">// import "github.com/firebase/..." ← ผิด!</span></code></pre>
-      </div>
-    </div>
-  </section>
-
-  <!-- ══════════════════════════════════════════
-       SECTION: HEX CODE
-  ══════════════════════════════════════════ -->
-  <section id="hex-code">
-    <div class="section-header">
-      <div class="section-dot hex"></div>
-      <span class="section-title">Hexagonal — Go Code</span>
-      <span class="section-sub">full layer example</span>
+<span class="cm">// ❌ domain import adapter — ผิดเด็ดขาด!</span>
+<span class="cm">// package domain</span>
+<span class="cm">// import "github.com/firebase/..." ← ห้ามทำ</span></code></pre>
     </div>
 
-    <div class="grid grid-2">
-      <div class="card hex">
-        <div class="card-head">
-          <span class="card-icon">🏛</span>
-          <span class="card-label hex">Domain Entity</span>
-        </div>
-        <pre><code><span class="cm">// internal/domain/notification.go</span>
+  </div>
+</section>
+
+<!-- ═══════════════ HEX CODE ═══════════════ -->
+<section id="hex-code">
+  <div class="sh"><div class="sdot hex"></div><span class="stitle">Hexagonal — Full Code</span><span class="ssub">domain → port → usecase → adapter</span></div>
+  <div class="grid g2">
+
+    <div class="card hex">
+      <div class="ch"><span class="ci">🏛</span><span class="cl hex">Domain Entity</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">ไฟล์นี้ไม่มี import นอกจาก standard library — <strong>pure Go struct ล้วนๆ</strong><br/>ใส่ business rule ที่ invariant ไว้ที่นี่ เช่น validation ที่ domain ต้องรู้เอง</div>
+      <pre><code><span class="cm">// internal/domain/notification.go</span>
 <span class="kw">package</span> domain
 
 <span class="kw">type</span> <span class="tp">Notification</span> <span class="kw">struct</span> {
@@ -1015,229 +731,205 @@ md, ok := metadata.<span class="fn">FromIncomingContext</span>(ctx)
 <span class="kw">const</span> (
   TypePostLiked     <span class="tp">NotificationType</span> = <span class="nu">1</span>
   TypePostCommented <span class="tp">NotificationType</span> = <span class="nu">2</span>
-)</code></pre>
-      </div>
+)
 
-      <div class="card hex">
-        <div class="card-head">
-          <span class="card-icon">🔌</span>
-          <span class="card-label hex">Port (Output Interface)</span>
-        </div>
-        <pre><code><span class="cm">// internal/port/output.go</span>
+<span class="cm">// domain error — ไม่มี external dep</span>
+<span class="kw">var</span> ErrNotFound = errors.<span class="fn">New</span>(<span class="str">"notification not found"</span>)</code></pre>
+    </div>
+
+    <div class="card hex">
+      <div class="ch"><span class="ci">🔌</span><span class="cl hex">Port — Output Interface</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">Domain กำหนด interface นี้เพื่อบอกว่า "ฉันต้องการอะไร" — <strong>implementation จริงอยู่ที่ adapter</strong><br/>ทำให้ test use case ได้โดย inject mock แทน real adapter ไม่ต้องต่อ DB หรือ Firebase จริง</div>
+      <pre><code><span class="cm">// internal/port/output.go</span>
 <span class="kw">package</span> port
 
 <span class="kw">type</span> <span class="tp">NotiRepository</span> <span class="kw">interface</span> {
   <span class="fn">Save</span>(ctx <span class="tp">context.Context</span>, n *domain.<span class="tp">Notification</span>) <span class="tp">error</span>
-  <span class="fn">FindByUser</span>(ctx <span class="tp">context.Context</span>, userID <span class="tp">string</span>) ([]*domain.<span class="tp">Notification</span>, <span class="tp">error</span>)
+  <span class="fn">FindByUser</span>(ctx <span class="tp">context.Context</span>, userID <span class="tp">string</span>) (
+    []*domain.<span class="tp">Notification</span>, <span class="tp">error</span>)
+}
+
+<span class="kw">type</span> <span class="tp">PushPayload</span> <span class="kw">struct</span> {
+  Title <span class="tp">string</span>
+  Body  <span class="tp">string</span>
+  Data  <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">string</span>
 }
 
 <span class="kw">type</span> <span class="tp">PushNotifier</span> <span class="kw">interface</span> {
-  <span class="fn">Send</span>(ctx <span class="tp">context.Context</span>, userID <span class="tp">string</span>, payload <span class="tp">PushPayload</span>) <span class="tp">error</span>
-  <span class="fn">Broadcast</span>(ctx <span class="tp">context.Context</span>, topic <span class="tp">string</span>, payload <span class="tp">PushPayload</span>) <span class="tp">error</span>
+  <span class="fn">Send</span>(ctx <span class="tp">context.Context</span>, userID <span class="tp">string</span>, p <span class="tp">PushPayload</span>) <span class="tp">error</span>
+  <span class="fn">Broadcast</span>(ctx <span class="tp">context.Context</span>, topic <span class="tp">string</span>, p <span class="tp">PushPayload</span>) <span class="tp">error</span>
 }</code></pre>
-      </div>
+    </div>
 
-      <div class="card hex">
-        <div class="card-head">
-          <span class="card-icon">⚙️</span>
-          <span class="card-label hex">Use Case</span>
-        </div>
-        <pre><code><span class="cm">// internal/usecase/broadcast.go</span>
+    <div class="card hex">
+      <div class="ch"><span class="ci">⚙️</span><span class="cl hex">Use Case</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">Business logic อยู่ที่นี่ทั้งหมด — ไม่รู้จัก gRPC, Postgres, Firebase<br/>รู้จักแค่ port (interface) — <strong>test ได้ 100% โดยไม่ต้อง infra จริง</strong></div>
+      <pre><code><span class="cm">// internal/usecase/broadcast.go</span>
 <span class="kw">type</span> <span class="tp">BroadcastUseCase</span> <span class="kw">struct</span> {
   repo port.<span class="tp">NotiRepository</span>
   push port.<span class="tp">PushNotifier</span>
 }
 
 <span class="kw">func</span> (uc *<span class="tp">BroadcastUseCase</span>) <span class="fn">Execute</span>(
-  ctx <span class="tp">context.Context</span>,
-  req <span class="tp">BroadcastInput</span>,
+  ctx <span class="tp">context.Context</span>, req <span class="tp">BroadcastInput</span>,
 ) <span class="tp">error</span> {
-  <span class="cm">// 1. build domain object</span>
-  n := &domain.<span class="tp">Notification</span>{...}
-  
-  <span class="cm">// 2. save to repo</span>
-  <span class="kw">if</span> err := uc.repo.<span class="fn">Save</span>(ctx, n); err != <span class="kw">nil</span> {
-    <span class="kw">return</span> fmt.<span class="fn">Errorf</span>(<span class="str">"save noti: %w"</span>, err)
+  n := &domain.<span class="tp">Notification</span>{
+    ID: uuid.<span class="fn">NewString</span>(), RefID: req.PostID,
   }
-  
-  <span class="cm">// 3. push via FCM (through port)</span>
-  <span class="kw">return</span> uc.push.<span class="fn">Broadcast</span>(ctx, <span class="str">"all-users"</span>, <span class="tp">PushPayload</span>{
-    Title: req.Title,
-    Body:  req.Body,
-    Data:  <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">string</span>{<span class="str">"postId"</span>: req.PostID},
+  <span class="cm">// ไม่รู้ว่า repo เป็น Postgres หรืออะไร</span>
+  <span class="kw">if</span> err := uc.repo.<span class="fn">Save</span>(ctx, n); err != <span class="kw">nil</span> {
+    <span class="kw">return</span> fmt.<span class="fn">Errorf</span>(<span class="str">"save: %w"</span>, err)
+  }
+  <span class="cm">// ไม่รู้ว่า push เป็น FCM หรืออะไร</span>
+  <span class="kw">return</span> uc.push.<span class="fn">Broadcast</span>(ctx, <span class="str">"all-users"</span>, port.<span class="tp">PushPayload</span>{
+    Title: req.Title, Body: req.Body,
+    Data: <span class="kw">map</span>[<span class="tp">string</span>]<span class="tp">string</span>{<span class="str">"postId"</span>: req.PostID},
   })
 }</code></pre>
-      </div>
+    </div>
 
-      <div class="card hex">
-        <div class="card-head">
-          <span class="card-icon">🔥</span>
-          <span class="card-label hex">FCM Adapter (Secondary)</span>
-        </div>
-        <pre><code><span class="cm">// internal/adapter/fcm/adapter.go</span>
-<span class="kw">type</span> <span class="tp">FCMAdapter</span> <span class="kw">struct</span> {
-  client *messaging.<span class="tp">Client</span>
-}
+    <div class="card hex">
+      <div class="ch"><span class="ci">🔥</span><span class="cl hex">FCM Adapter (Secondary)</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">Adapter รู้จัก Firebase SDK แต่ domain ไม่รู้จัก — แปลง <span class="ic">port.PushPayload</span> → Firebase Message<br/>อยากเปลี่ยน provider แค่สร้าง adapter ใหม่ implement <span class="ic">port.PushNotifier</span> — ไม่แตะ use case เลย</div>
+      <pre><code><span class="cm">// internal/adapter/fcm/adapter.go</span>
+<span class="kw">type</span> <span class="tp">FCMAdapter</span> <span class="kw">struct</span>{ client *messaging.<span class="tp">Client</span> }
 
 <span class="cm">// implements port.PushNotifier</span>
 <span class="kw">func</span> (a *<span class="tp">FCMAdapter</span>) <span class="fn">Broadcast</span>(
   ctx <span class="tp">context.Context</span>,
-  topic <span class="tp">string</span>,
-  p port.<span class="tp">PushPayload</span>,
+  topic <span class="tp">string</span>, p port.<span class="tp">PushPayload</span>,
 ) <span class="tp">error</span> {
+  <span class="cm">// แปลง domain payload → Firebase message</span>
   _, err := a.client.<span class="fn">Send</span>(ctx, &messaging.<span class="tp">Message</span>{
     Topic: topic,
     Notification: &messaging.<span class="tp">Notification</span>{
-      Title: p.Title,
-      Body:  p.Body,
+      Title: p.Title, Body: p.Body,
     },
     Data: p.Data,
   })
   <span class="kw">return</span> err
 }</code></pre>
-      </div>
-    </div>
-  </section>
-
-  <!-- ══════════════════════════════════════════
-       SECTION: COMBINED (your project)
-  ══════════════════════════════════════════ -->
-  <section id="combined">
-    <div class="section-header">
-      <div class="section-dot hex"></div>
-      <span class="section-title">Go + gRPC + Hex — Wire Up</span>
-      <span class="section-sub">cmd/server/main.go</span>
     </div>
 
-    <div class="grid grid-2">
-      <div class="card" style="border-color:var(--border)">
-        <div class="card-head">
-          <span class="card-icon">🔧</span>
-          <span class="card-label amber">Dependency Injection (main.go)</span>
-        </div>
-        <pre><code><span class="kw">func</span> <span class="fn">main</span>() {
-  <span class="cm">// 1. infra</span>
+  </div>
+</section>
+
+<!-- ═══════════════ COMBINED ═══════════════ -->
+<section id="combined">
+  <div class="sh"><div class="sdot hex"></div><span class="stitle">Wire Up + Testing</span><span class="ssub">main.go · unit test · commands</span></div>
+  <div class="grid g2">
+
+    <div class="card">
+      <div class="ch"><span class="ci">🔧</span><span class="cl amber">Dependency Injection — main.go</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">สร้าง adapter แล้วส่งเข้า use case ทีเดียว — use case รับแค่ interface ไม่รู้ว่าเป็น concrete type อะไร<br/>ทำครั้งเดียวตอน startup — ถ้า dependency เปลี่ยน แก้แค่ที่นี่ที่เดียว</div>
+      <pre><code><span class="kw">func</span> <span class="fn">main</span>() {
+  <span class="cm">// 1. infra — concrete implementations</span>
   db  := <span class="fn">connectPostgres</span>(cfg.DBURL)
   fcm := <span class="fn">initFirebase</span>(cfg.Credentials)
 
-  <span class="cm">// 2. adapters (secondary)</span>
+  <span class="cm">// 2. secondary adapters</span>
   notiRepo := postgres.<span class="fn">NewNotiRepo</span>(db)
   pushSvc  := fcmadapter.<span class="fn">New</span>(fcm)
 
-  <span class="cm">// 3. use cases</span>
-  broadcastUC := usecase.<span class="fn">NewBroadcastUseCase</span>(
-    notiRepo,
-    pushSvc,
-  )
+  <span class="cm">// 3. use cases (รับแค่ interface)</span>
+  broadcastUC := usecase.<span class="fn">NewBroadcastUseCase</span>(notiRepo, pushSvc)
 
-  <span class="cm">// 4. adapters (primary)</span>
+  <span class="cm">// 4. primary adapter</span>
   grpcHandler := grpcadapter.<span class="fn">NewHandler</span>(broadcastUC)
 
-  <span class="cm">// 5. start gRPC server</span>
+  <span class="cm">// 5. start server</span>
   s := grpc.<span class="fn">NewServer</span>(...)
   pb.<span class="fn">RegisterNotificationServiceServer</span>(s, grpcHandler)
   s.<span class="fn">Serve</span>(lis)
 }</code></pre>
-      </div>
+    </div>
 
-      <div class="card" style="border-color:var(--border)">
-        <div class="card-head">
-          <span class="card-icon">🎯</span>
-          <span class="card-label amber">gRPC Handler (Primary Adapter)</span>
-        </div>
-        <pre><code><span class="cm">// internal/adapter/grpc/handler.go</span>
+    <div class="card">
+      <div class="ch"><span class="ci">🎯</span><span class="cl amber">gRPC Handler (Primary Adapter)</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">แปลง proto request → domain input → เรียก use case → แปลง result กลับเป็น proto<br/><strong>handler ไม่มี business logic เลย</strong> — แค่ translate และ delegate ไป use case</div>
+      <pre><code><span class="cm">// internal/adapter/grpc/handler.go</span>
 <span class="kw">type</span> <span class="tp">Handler</span> <span class="kw">struct</span> {
   pb.<span class="tp">UnimplementedNotificationServiceServer</span>
   broadcastUC port.<span class="tp">BroadcastUseCase</span>
 }
 
 <span class="kw">func</span> (h *<span class="tp">Handler</span>) <span class="fn">BroadcastNotification</span>(
-  ctx <span class="tp">context.Context</span>,
-  req *pb.<span class="tp">BroadcastRequest</span>,
+  ctx <span class="tp">context.Context</span>, req *pb.<span class="tp">BroadcastRequest</span>,
 ) (*pb.<span class="tp">BroadcastResponse</span>, <span class="tp">error</span>) {
 
-  <span class="cm">// proto → domain input</span>
+  <span class="cm">// proto → domain input (translate ที่นี่เท่านั้น)</span>
   err := h.broadcastUC.<span class="fn">Execute</span>(ctx, usecase.<span class="tp">BroadcastInput</span>{
-    Topic:  req.Topic,
-    Title:  req.Title,
-    Body:   req.Body,
-    PostID: req.PostId,
+    Topic: req.Topic, Title: req.Title,
+    Body: req.Body,   PostID: req.PostId,
   })
   <span class="kw">if</span> err != <span class="kw">nil</span> {
     <span class="kw">return</span> <span class="kw">nil</span>, status.<span class="fn">Error</span>(codes.Internal, err.<span class="fn">Error</span>())
   }
-  <span class="kw">return</span> &pb.<span class="tp">BroadcastResponse</span>{
-    Status: <span class="fn">okStatus</span>(),
-  }, <span class="kw">nil</span>
+  <span class="kw">return</span> &pb.<span class="tp">BroadcastResponse</span>{Status: <span class="fn">okStatus</span>()}, <span class="kw">nil</span>
 }</code></pre>
-      </div>
     </div>
 
-    <!-- Testing section -->
-    <div class="divider">testing</div>
-    <div class="grid grid-2">
-      <div class="card" style="border-color:var(--border)">
-        <div class="card-head">
-          <span class="card-icon">🧪</span>
-          <span class="card-label amber">Unit Test Use Case (Mock Port)</span>
-        </div>
-        <pre><code><span class="kw">type</span> <span class="tp">mockPush</span> <span class="kw">struct</span>{ calls []<span class="tp">string</span> }
-<span class="kw">func</span> (m *<span class="tp">mockPush</span>) <span class="fn">Broadcast</span>(ctx <span class="tp">context.Context</span>,
-  topic <span class="tp">string</span>, p port.<span class="tp">PushPayload</span>) <span class="tp">error</span> {
+    <div class="card">
+      <div class="ch"><span class="ci">🧪</span><span class="cl amber">Unit Test — Mock Port</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">ข้อดีสูงสุดของ Hexagonal — <strong>test use case ได้โดยไม่ต้องต่อ DB หรือ Firebase จริงเลย</strong><br/>สร้าง mock ที่ implement port แล้ว inject เข้าไป — test รันเร็วมาก deterministic 100%</div>
+      <pre><code><span class="cm">// mock implement port.PushNotifier</span>
+<span class="kw">type</span> <span class="tp">mockPush</span> <span class="kw">struct</span>{ calls []<span class="tp">string</span> }
+<span class="kw">func</span> (m *<span class="tp">mockPush</span>) <span class="fn">Broadcast</span>(
+  ctx <span class="tp">context.Context</span>, topic <span class="tp">string</span>, p port.<span class="tp">PushPayload</span>,
+) <span class="tp">error</span> {
   m.calls = <span class="fn">append</span>(m.calls, topic)
   <span class="kw">return</span> <span class="kw">nil</span>
 }
 
-<span class="kw">func</span> <span class="fn">TestBroadcast</span>(t *<span class="tp">testing.T</span>) {
+<span class="kw">func</span> <span class="fn">TestBroadcast_Success</span>(t *<span class="tp">testing.T</span>) {
   push := &<span class="tp">mockPush</span>{}
-  uc := usecase.<span class="fn">NewBroadcastUseCase</span>(
-    &<span class="tp">mockRepo</span>{},
-    push,
-  )
-  err := uc.<span class="fn">Execute</span>(ctx, <span class="tp">BroadcastInput</span>{...})
+  uc   := usecase.<span class="fn">NewBroadcastUseCase</span>(&<span class="tp">mockRepo</span>{}, push)
+
+  err := uc.<span class="fn">Execute</span>(ctx, <span class="tp">BroadcastInput</span>{
+    Topic: <span class="str">"all-users"</span>, Title: <span class="str">"New Post"</span>,
+  })
+
   assert.<span class="fn">NoError</span>(t, err)
   assert.<span class="fn">Equal</span>(t, <span class="str">"all-users"</span>, push.calls[<span class="nu">0</span>])
 }</code></pre>
-      </div>
-
-      <div class="card" style="border-color:var(--border)">
-        <div class="card-head">
-          <span class="card-icon">📋</span>
-          <span class="card-label amber">Quick Commands</span>
-        </div>
-        <div class="tbl-wrap">
-          <table>
-            <thead><tr><th>Command</th><th>Description</th></tr></thead>
-            <tbody>
-              <tr><td class="mono">go mod tidy</td><td>sync dependencies</td></tr>
-              <tr><td class="mono">go test ./...</td><td>run all tests</td></tr>
-              <tr><td class="mono">go build ./cmd/server</td><td>build binary</td></tr>
-              <tr><td class="mono">protoc --go_out=. --go-grpc_out=. *.proto</td><td>gen proto</td></tr>
-              <tr><td class="mono">grpcurl -plaintext :50051 list</td><td>inspect gRPC</td></tr>
-              <tr><td class="mono">go vet ./...</td><td>static analysis</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
-  </section>
+
+    <div class="card">
+      <div class="ch"><span class="ci">📋</span><span class="cl amber">Quick Commands</span><span class="freq a">ใช้ทุกวัน</span></div>
+      <div class="td">Command ที่ใช้บ่อยที่สุดใน Go microservice — ควรจำทุกตัว</div>
+      <div class="tw"><table>
+        <thead><tr><th>Command</th><th>ทำอะไร</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">go mod tidy</td><td>sync dependencies ใน go.mod</td></tr>
+          <tr><td class="mono">go test ./...</td><td>run tests ทุก package</td></tr>
+          <tr><td class="mono">go test -race ./...</td><td>ตรวจ race condition — ทำก่อน deploy</td></tr>
+          <tr><td class="mono">go build ./cmd/server</td><td>build binary</td></tr>
+          <tr><td class="mono">go vet ./...</td><td>static analysis ตรวจ bug เบื้องต้น</td></tr>
+          <tr><td class="mono">protoc --go_out=. --go-grpc_out=. *.proto</td><td>generate Go จาก proto file</td></tr>
+          <tr><td class="mono">grpcurl -plaintext :50051 list</td><td>inspect gRPC services (ต้อง reflection)</td></tr>
+          <tr><td class="mono">grpcurl -plaintext -d '{}' :50051 svc/Rpc</td><td>เรียก gRPC method ด้วย JSON</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+  </div>
+</section>
 
 </main>
 
 <script>
-  // Active nav highlight on scroll
   const sections = document.querySelectorAll('section[id]');
-  const navLinks = document.querySelectorAll('nav a');
-  const observer = new IntersectionObserver((entries) => {
+  const links = document.querySelectorAll('nav a');
+  const obs = new IntersectionObserver(entries => {
     entries.forEach(e => {
       if (e.isIntersecting) {
-        navLinks.forEach(a => a.classList.remove('active'));
-        const active = document.querySelector(`nav a[href="#${e.target.id}"]`);
-        if (active) active.classList.add('active');
+        links.forEach(a => a.classList.remove('active'));
+        const a = document.querySelector(`nav a[href="#${e.target.id}"]`);
+        if (a) a.classList.add('active');
       }
     });
-  }, { rootMargin: '-30% 0px -60% 0px' });
-  sections.forEach(s => observer.observe(s));
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => obs.observe(s));
 </script>
 </body>
 </html>
